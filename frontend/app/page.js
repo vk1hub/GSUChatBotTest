@@ -1,26 +1,23 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-// 1. Markdown import must be here (under use client)
+// For bold Text
 import ReactMarkdown from 'react-markdown';
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef(null);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim()) return;
 
     const userMsg = { role: "user", content: input };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
-    setIsLoading(true);
 
     try {
       const res = await fetch("http://127.0.0.1:8000/ask", {
@@ -28,63 +25,47 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: input }),
       });
-
-      if (!res.ok) throw new Error("Backend offline");
-
       const data = await res.json();
       setMessages((prev) => [
         ...prev,
-        { role: "ai", content: data.answer, citations: data.citations },
+        { role: "ai", content: data.answer },
       ]);
     } catch (error) {
-      setMessages((prev) => [...prev, { role: "ai", content: "Error connecting to server." }]);
-    } finally {
-      setIsLoading(false);
+      setMessages((prev) => [...prev, { role: "ai", content: "Error: Check backend." }]);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-3xl mx-auto border-x bg-white shadow-lg">
-      <div className="p-4 bg-blue-700 text-white font-bold text-center text-xl shadow-md">
-        GSU Faculty Handbook AI
+    <div className="flex flex-col h-screen max-w-3xl mx-auto bg-white border-x">
+      <div className="p-4 border-b font-bold text-lg text-black">
+        GSU Chatbot
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center text-gray-400 mt-10">Ask a question about the GSU handbook!</div>
-        )}
-        
+      <div className="flex-1 overflow-y-auto p-4 space-y-8">
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] p-3 rounded-lg ${msg.role === "user" ? "bg-blue-600 text-white" : "bg-gray-100 border text-black"}`}>
-              <div className="font-bold text-xs mb-1 opacity-70">
-                {msg.role === "user" ? "You" : "GSU AI"}
+            <div className="max-w-[85%] text-black">
+              <div className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-tight">
+                {msg.role === "user" ? "YOU" : "AI"}
               </div>
               
-              {/* 2. Changed from <p> to <ReactMarkdown> for AI responses */}
-              {msg.role === "ai" ? (
-                <div className="prose prose-sm max-w-none">
+              {/*Markdown for Bold Text*/}
+              <div className="border-t pt-2 border-gray-100 prose prose-sm max-w-none text-black">
+                {msg.role === "ai" ? (
                   <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
-              ) : (
-                <p className="whitespace-pre-wrap">{msg.content}</p>
-              )}
-
-              {msg.citations && (
-                <p className="text-[10px] mt-2 italic text-gray-500">
-                  Sources: Page(s) {msg.citations.join(", ")}
-                </p>
-              )}
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                )}
+              </div>
             </div>
           </div>
         ))}
-        {isLoading && <div className="text-gray-400 animate-pulse text-sm">AI is thinking...</div>}
         <div ref={scrollRef} />
       </div>
 
-      <div className="p-4 border-t bg-gray-50 flex gap-2">
+      <div className="p-4 border-t flex gap-2">
         <input
-          className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+          className="flex-1 p-2 border border-gray-300 outline-none text-black bg-white"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
@@ -92,7 +73,7 @@ export default function Home() {
         />
         <button
           onClick={handleSend}
-          className="px-6 py-3 bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-800 transition"
+          className="px-6 py-2 border border-gray-300 bg-white text-black active:bg-gray-100"
         >
           Send
         </button>
