@@ -13,6 +13,8 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { height: 100%; }
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -83,11 +85,22 @@ body {
   height: 50px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 20px;
   background: #133ea2;
   flex-shrink: 0;
 }
 .topbar-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #ffffff; }
+.sign-in-btn {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 14px;
+  border: 1px solid rgba(255,255,255,0.5);
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+}
+.sign-in-btn:hover { background: rgba(255,255,255,0.15); }
 
 /* scrollable chat messages area */
 .chat-area { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
@@ -125,3 +138,45 @@ body {
   border: 1px solid #133ea2; background: #133ea2; color: #ffffff; cursor: pointer;
 }
 .send-btn:hover { opacity: 0.9; }
+
+/* auth modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal { background: var(--background); border: 1px solid var(--border); width: 100%; max-width: 360px; display: flex; flex-direction: column; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.modal-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted-text); }
+.modal-close:hover { color: var(--foreground); }
+
+/* sign in / register tab switcher */
+.auth-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.auth-tab {
+  flex: 1; padding: 11px; font-family: inherit; font-size: 12px;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; color: var(--muted-text); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.auth-tab.active { color: #133ea2; border-bottom-color: #133ea2; }
+
+/* form fields inside modal */
+.auth-form { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.field-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted-text); margin-bottom: -4px; }
+.field-input {
+  width: 100%; padding: 9px 10px; font-family: inherit; font-size: 13px;
+  border: 1px solid var(--border); background: var(--background); color: var(--foreground); outline: none;
+}
+.field-input:focus { border-color: #133ea2; }
+.submit-btn {
+  width: 100%; margin-top: 6px; padding: 10px; font-family: inherit; font-size: 13px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  border: 1px solid #133ea2; background: #133ea2; color: #ffffff; cursor: pointer;
+}
+.submit-btn:hover { opacity: 0.85; }
+.switch-text { font-size: 12px; color: var(--muted-text); text-align: center; margin-top: 4px; }
+.switch-link { color: #133ea2; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }

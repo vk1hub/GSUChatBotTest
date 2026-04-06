@@ -1,7 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 
-// placeholder chats to show the sidebar layout
 const SAMPLE_HISTORY = [
   { id: 1, title: "CS 4720 Office Hours" },
   { id: 2, title: "Graduation requirements" },
@@ -12,14 +11,15 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [chatHistory, setChatHistory] = useState(SAMPLE_HISTORY);
   const [activeChatId, setActiveChatId] = useState(null);
+  // modal visibility and which tab is active (login vs register)
+  const [showModal, setShowModal] = useState(false);
+  const [authTab, setAuthTab] = useState("login");
   const scrollRef = useRef(null);
 
-  // scroll to bottom whenever messages update
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // send message to backend and get response
   const handleSend = async () => {
     if (!input.trim()) return;
     const question = input.trim();
@@ -39,7 +39,6 @@ export default function Home() {
     }
   };
 
-  // create a new empty chat and add it to the sidebar
   const handleNewChat = () => {
     const newId = Date.now();
     setChatHistory((prev) => [{ id: newId, title: "New Chat" }, ...prev]);
@@ -70,6 +69,9 @@ export default function Home() {
       <div className="main">
         <div className="topbar">
           <span className="topbar-title">GSU CS Chatbot</span>
+          <button className="sign-in-btn" onClick={() => { setShowModal(true); setAuthTab("login"); }}>
+            Sign in
+          </button>
         </div>
 
         {/* message list */}
@@ -104,6 +106,46 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* sign in / create account modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">GSU CS Chatbot</span>
+              <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>
+            </div>
+
+            {/* tab switcher between sign in and register */}
+            <div className="auth-tabs">
+              <button className={`auth-tab ${authTab === "login" ? "active" : ""}`} onClick={() => setAuthTab("login")}>Sign in</button>
+              <button className={`auth-tab ${authTab === "register" ? "active" : ""}`} onClick={() => setAuthTab("register")}>Create account</button>
+            </div>
+
+            {authTab === "login" ? (
+              <div className="auth-form">
+                <label className="field-label">Email</label>
+                <input type="email" className="field-input" placeholder="you@student.gsu.edu" />
+                <label className="field-label">Password</label>
+                <input type="password" className="field-input" placeholder="••••••••" />
+                <button className="submit-btn">Sign in</button>
+                <p className="switch-text">No account? <span className="switch-link" onClick={() => setAuthTab("register")}>Create one</span></p>
+              </div>
+            ) : (
+              <div className="auth-form">
+                <label className="field-label">Full name</label>
+                <input type="text" className="field-input" placeholder="Your name" />
+                <label className="field-label">Email</label>
+                <input type="email" className="field-input" placeholder="you@student.gsu.edu" />
+                <label className="field-label">Password</label>
+                <input type="password" className="field-input" placeholder="••••••••" />
+                <button className="submit-btn">Create account</button>
+                <p className="switch-text">Have an account? <span className="switch-link" onClick={() => setAuthTab("login")}>Sign in</span></p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
