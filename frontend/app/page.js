@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { auth } from "./firebase";
+import { auth, db } from "./firebase";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -8,36 +8,48 @@ import {
   updateProfile,
   signOut,
 } from "firebase/auth";
-
-const SAMPLE_HISTORY = [
-  { id: 1, title: "CS 4720 Office Hours" },
-  { id: 2, title: "Graduation requirements" },
-];
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [chatHistory, setChatHistory] = useState(SAMPLE_HISTORY);
+  // chat history now comes from firestore instead of sample data
+  const [chatHistory, setChatHistory] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
   const [user, setUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [authTab, setAuthTab] = useState("login");
-  // controlled inputs for the auth form
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [authError, setAuthError] = useState("");
   const scrollRef = useRef(null);
 
-  // listen for firebase auth state changes (login/logout)
+  // listen for firebase auth state changes
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);
 
+  // load chat list from firestore when user logs in or out
+  useEffect(() => {
+    if (!user) { setChatHistory([]); setMessages([]); setActiveChatId(null); return; }
+    loadChatList();
+  }, [user]);
+
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // fetch all chats for this user ordered by newest first
+  const loadChatList = async () => {
+    const q = query(
+      collection(db, "users", user.uid, "chats"),
+      orderBy("createdAt", "desc")
+    );
+    const snap = await getDocs(q);
+    setChatHistory(snap.docs.map((d) => ({ id: d.id, title: d.data().title })));
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -58,62 +70,46 @@ export default function Home() {
     }
   };
 
-  const handleNewChat = () => {
-    const newId = Date.now();
-    setChatHistory((prev) => [{ id: newId, title: "New Chat" }, ...prev]);
-    setActiveChatId(newId);
-    setMessages([]);
-  };
+  const handleNewChat = () => { setMessages([]); setActiveChatId(null); };
 
-  // sign in with email and password using firebase auth
   const handleSignIn = async () => {
     setAuthError("");
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      setShowModal(false);
-      setEmail(""); setPassword("");
-    } catch {
-      setAuthError("Invalid email or password.");
-    }
+      setShowModal(false); setEmail(""); setPassword("");
+    } catch { setAuthError("Invalid email or password."); }
   };
 
-  // create a new account and save the display name to firebase profile
   const handleRegister = async () => {
     setAuthError("");
     if (!name.trim()) { setAuthError("Please enter your name."); return; }
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(cred.user, { displayName: name.trim() });
-      setShowModal(false);
-      setEmail(""); setPassword(""); setName("");
-    } catch {
-      setAuthError("Could not create account. Check your email/password.");
-    }
+      setShowModal(false); setEmail(""); setPassword(""); setName("");
+    } catch { setAuthError("Could not create account. Check your email/password."); }
   };
 
   const handleSignOut = async () => {
     await signOut(auth);
-    setMessages([]);
+    setChatHistory([]); setMessages([]); setActiveChatId(null);
   };
 
-  // reset form and open modal on the right tab
   const openModal = (tab) => {
     setAuthError(""); setEmail(""); setPassword(""); setName("");
     setAuthTab(tab); setShowModal(true);
   };
 
-  // use display name if set, fall back to email prefix
   const displayName = user?.displayName || user?.email?.split("@")[0] || "";
 
   return (
     <div className="app-root">
-
-      {/* sidebar with chat history */}
       <aside className="sidebar">
         <div className="sidebar-header">Chat History</div>
         <button className="new-chat-btn" onClick={handleNewChat}>+ New Chat</button>
         <div className="chat-list">
           {!user && <p className="chat-list-empty">Sign in to save history.</p>}
+          {user && chatHistory.length === 0 && <p className="chat-list-empty">No chats yet.</p>}
           {chatHistory.map((chat) => (
             <button
               key={chat.id}
@@ -129,7 +125,6 @@ export default function Home() {
       <div className="main">
         <div className="topbar">
           <span className="topbar-title">GSU CS Chatbot</span>
-          {/* show name + sign out if logged in, otherwise show sign in button */}
           {user ? (
             <div className="user-bar">
               <span className="user-name">Hi, {displayName}</span>
@@ -140,7 +135,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* message list */}
         <div className="chat-area">
           <div className="chat-inner">
             {messages.length === 0 && (
@@ -158,7 +152,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* input bar at the bottom */}
         <div className="input-bar">
           <div className="input-bar-inner">
             <input
@@ -173,7 +166,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* auth modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
