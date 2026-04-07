@@ -180,3 +180,13 @@ body {
 .submit-btn:hover { opacity: 0.85; }
 .switch-text { font-size: 12px; color: var(--muted-text); text-align: center; margin-top: 4px; }
 .switch-link { color: #133ea2; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* logged in user info in topbar */
+.user-bar { display: flex; align-items: center; gap: 10px; }
+.user-name { font-size: 12px; color: rgba(255,255,255,0.8); }
+
+/* helper text when not logged in */
+.chat-list-empty { font-size: 12px; color: var(--muted-text); padding: 8px 10px; }
+
+/* inline error message in auth form */
+.auth-error { font-size: 12px; color: #c0392b; }

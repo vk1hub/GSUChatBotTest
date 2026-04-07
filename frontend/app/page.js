@@ -1,5 +1,13 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { auth } from "./firebase";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+} from "firebase/auth";
 
 const SAMPLE_HISTORY = [
   { id: 1, title: "CS 4720 Office Hours" },
@@ -11,10 +19,21 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [chatHistory, setChatHistory] = useState(SAMPLE_HISTORY);
   const [activeChatId, setActiveChatId] = useState(null);
-  // modal visibility and which tab is active (login vs register)
+  const [user, setUser] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [authTab, setAuthTab] = useState("login");
+  // controlled inputs for the auth form
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [authError, setAuthError] = useState("");
   const scrollRef = useRef(null);
+
+  // listen for firebase auth state changes (login/logout)
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,6 +65,46 @@ export default function Home() {
     setMessages([]);
   };
 
+  // sign in with email and password using firebase auth
+  const handleSignIn = async () => {
+    setAuthError("");
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      setShowModal(false);
+      setEmail(""); setPassword("");
+    } catch {
+      setAuthError("Invalid email or password.");
+    }
+  };
+
+  // create a new account and save the display name to firebase profile
+  const handleRegister = async () => {
+    setAuthError("");
+    if (!name.trim()) { setAuthError("Please enter your name."); return; }
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: name.trim() });
+      setShowModal(false);
+      setEmail(""); setPassword(""); setName("");
+    } catch {
+      setAuthError("Could not create account. Check your email/password.");
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    setMessages([]);
+  };
+
+  // reset form and open modal on the right tab
+  const openModal = (tab) => {
+    setAuthError(""); setEmail(""); setPassword(""); setName("");
+    setAuthTab(tab); setShowModal(true);
+  };
+
+  // use display name if set, fall back to email prefix
+  const displayName = user?.displayName || user?.email?.split("@")[0] || "";
+
   return (
     <div className="app-root">
 
@@ -54,6 +113,7 @@ export default function Home() {
         <div className="sidebar-header">Chat History</div>
         <button className="new-chat-btn" onClick={handleNewChat}>+ New Chat</button>
         <div className="chat-list">
+          {!user && <p className="chat-list-empty">Sign in to save history.</p>}
           {chatHistory.map((chat) => (
             <button
               key={chat.id}
@@ -69,9 +129,15 @@ export default function Home() {
       <div className="main">
         <div className="topbar">
           <span className="topbar-title">GSU CS Chatbot</span>
-          <button className="sign-in-btn" onClick={() => { setShowModal(true); setAuthTab("login"); }}>
-            Sign in
-          </button>
+          {/* show name + sign out if logged in, otherwise show sign in button */}
+          {user ? (
+            <div className="user-bar">
+              <span className="user-name">Hi, {displayName}</span>
+              <button className="sign-in-btn" onClick={handleSignOut}>Sign out</button>
+            </div>
+          ) : (
+            <button className="sign-in-btn" onClick={() => openModal("login")}>Sign in</button>
+          )}
         </div>
 
         {/* message list */}
@@ -107,7 +173,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* sign in / create account modal */}
+      {/* auth modal */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -115,31 +181,30 @@ export default function Home() {
               <span className="modal-title">GSU CS Chatbot</span>
               <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>
             </div>
-
-            {/* tab switcher between sign in and register */}
             <div className="auth-tabs">
               <button className={`auth-tab ${authTab === "login" ? "active" : ""}`} onClick={() => setAuthTab("login")}>Sign in</button>
               <button className={`auth-tab ${authTab === "register" ? "active" : ""}`} onClick={() => setAuthTab("register")}>Create account</button>
             </div>
-
             {authTab === "login" ? (
               <div className="auth-form">
                 <label className="field-label">Email</label>
-                <input type="email" className="field-input" placeholder="you@student.gsu.edu" />
+                <input type="email" className="field-input" placeholder="you@student.gsu.edu" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <label className="field-label">Password</label>
-                <input type="password" className="field-input" placeholder="••••••••" />
-                <button className="submit-btn">Sign in</button>
+                <input type="password" className="field-input" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                {authError && <p className="auth-error">{authError}</p>}
+                <button className="submit-btn" onClick={handleSignIn}>Sign in</button>
                 <p className="switch-text">No account? <span className="switch-link" onClick={() => setAuthTab("register")}>Create one</span></p>
               </div>
             ) : (
               <div className="auth-form">
                 <label className="field-label">Full name</label>
-                <input type="text" className="field-input" placeholder="Your name" />
+                <input type="text" className="field-input" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
                 <label className="field-label">Email</label>
-                <input type="email" className="field-input" placeholder="you@student.gsu.edu" />
+                <input type="email" className="field-input" placeholder="you@student.gsu.edu" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <label className="field-label">Password</label>
-                <input type="password" className="field-input" placeholder="••••••••" />
-                <button className="submit-btn">Create account</button>
+                <input type="password" className="field-input" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                {authError && <p className="auth-error">{authError}</p>}
+                <button className="submit-btn" onClick={handleRegister}>Create account</button>
                 <p className="switch-text">Have an account? <span className="switch-link" onClick={() => setAuthTab("login")}>Sign in</span></p>
               </div>
             )}
