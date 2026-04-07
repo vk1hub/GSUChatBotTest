@@ -8,12 +8,11 @@ import {
   updateProfile,
   signOut,
 } from "firebase/auth";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  // chat history now comes from firestore instead of sample data
   const [chatHistory, setChatHistory] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
   const [user, setUser] = useState(null);
@@ -25,13 +24,11 @@ export default function Home() {
   const [authError, setAuthError] = useState("");
   const scrollRef = useRef(null);
 
-  // listen for firebase auth state changes
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
     return () => unsub();
   }, []);
 
-  // load chat list from firestore when user logs in or out
   useEffect(() => {
     if (!user) { setChatHistory([]); setMessages([]); setActiveChatId(null); return; }
     loadChatList();
@@ -41,21 +38,37 @@ export default function Home() {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // fetch all chats for this user ordered by newest first
   const loadChatList = async () => {
-    const q = query(
-      collection(db, "users", user.uid, "chats"),
-      orderBy("createdAt", "desc")
-    );
+    const q = query(collection(db, "users", user.uid, "chats"), orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
     setChatHistory(snap.docs.map((d) => ({ id: d.id, title: d.data().title })));
+  };
+
+  // create a new chat doc in firestore using the first question as the title
+  const createChat = async (firstQuestion) => {
+    const title = firstQuestion.length > 40 ? firstQuestion.slice(0, 40) + "..." : firstQuestion;
+    const ref = await addDoc(collection(db, "users", user.uid, "chats"), {
+      title,
+      messages: [],
+      createdAt: Date.now(),
+    });
+    setChatHistory((prev) => [{ id: ref.id, title }, ...prev]);
+    setActiveChatId(ref.id);
+    return ref.id;
   };
 
   const handleSend = async () => {
     if (!input.trim()) return;
     const question = input.trim();
-    setMessages((prev) => [...prev, { role: "user", content: question }]);
+
+    // show user message right away
+    const updatedMessages = [...messages, { role: "user", content: question }];
+    setMessages(updatedMessages);
     setInput("");
+
+    // if logged in and no active chat yet, create one automatically
+    let chatId = activeChatId;
+    if (user && !chatId) chatId = await createChat(question);
 
     try {
       const res = await fetch("http://127.0.0.1:8000/ask", {
@@ -64,9 +77,9 @@ export default function Home() {
         body: JSON.stringify({ question }),
       });
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "ai", content: data.answer }]);
+      setMessages([...updatedMessages, { role: "ai", content: data.answer }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "ai", content: "Error: Could not reach the backend." }]);
+      setMessages([...updatedMessages, { role: "ai", content: "Error: Could not reach the backend." }]);
     }
   };
 
