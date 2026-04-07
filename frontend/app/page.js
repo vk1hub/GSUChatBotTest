@@ -8,7 +8,7 @@ import {
   updateProfile,
   signOut,
 } from "firebase/auth";
-import { collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, getDoc, doc, updateDoc,} from "firebase/firestore";
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
@@ -34,6 +34,12 @@ export default function Home() {
     loadChatList();
   }, [user]);
 
+  // load messages whenever the active chat changes
+  useEffect(() => {
+    if (!activeChatId || !user) return;
+    loadMessages(activeChatId);
+  }, [activeChatId]);
+
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -42,6 +48,12 @@ export default function Home() {
     const q = query(collection(db, "users", user.uid, "chats"), orderBy("createdAt", "desc"));
     const snap = await getDocs(q);
     setChatHistory(snap.docs.map((d) => ({ id: d.id, title: d.data().title })));
+  };
+
+  // fetch messages array from a specific chat doc
+  const loadMessages = async (chatId) => {
+    const snap = await getDoc(doc(db, "users", user.uid, "chats", chatId));
+    if (snap.exists()) setMessages(snap.data().messages || []);
   };
 
   // create a new chat doc in firestore using the first question as the title
@@ -55,6 +67,11 @@ export default function Home() {
     setChatHistory((prev) => [{ id: ref.id, title }, ...prev]);
     setActiveChatId(ref.id);
     return ref.id;
+  };
+
+  // overwrite the messages array in the chat doc after each exchange
+  const saveMessages = async (chatId, updatedMessages) => {
+    await updateDoc(doc(db, "users", user.uid, "chats", chatId), { messages: updatedMessages });
   };
 
   const handleSend = async () => {
@@ -77,9 +94,16 @@ export default function Home() {
         body: JSON.stringify({ question }),
       });
       const data = await res.json();
-      setMessages([...updatedMessages, { role: "ai", content: data.answer }]);
+      const aiMsg = { role: "ai", content: data.answer };
+      const finalMessages = [...updatedMessages, aiMsg];
+      setMessages(finalMessages);
+      // save the full conversation to firestore
+      if (user && chatId) await saveMessages(chatId, finalMessages);
     } catch {
-      setMessages([...updatedMessages, { role: "ai", content: "Error: Could not reach the backend." }]);
+      const errMsg = { role: "ai", content: "Error: Could not reach the backend." };
+      const finalMessages = [...updatedMessages, errMsg];
+      setMessages(finalMessages);
+      if (user && chatId) await saveMessages(chatId, finalMessages);
     }
   };
 
