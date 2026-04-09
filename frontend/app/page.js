@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { auth, db } from "./firebase";
+import ReactMarkdown from "react-markdown";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -185,7 +186,9 @@ export default function Home() {
               <div key={i} className={`msg-row ${msg.role === "user" ? "user" : ""}`}>
                 <div className="msg-wrap">
                   <div className="msg-label">{msg.role === "user" ? "YOU" : "AI"}</div>
-                  <div className="msg-body"><p>{msg.content}</p></div>
+                  <div className="msg-body">
+                    {msg.role === "ai" ? <ReactMarkdown>{msg.content}</ReactMarkdown> : <p>{msg.content}</p>}
+                  </div>
                 </div>
               </div>
             ))}
