@@ -19,15 +19,15 @@ def get_embedding(text):
         print(f"Ollama Error: Make sure nomic-embed-text is pulled and running. {e}")
         return None
 
-def build_index():
-    with open("data/handbook_text.txt", "r", encoding="utf-8") as f:
+def build_index(text_file, index_file, meta_file, source_name):
+    with open(text_file, "r", encoding="utf-8") as f:
         content = f.read()
     
     pages = content.split("===== PAGE ")
     chunks = []
     metadata = []
     
-    print("Generating embeddings... this will take a moment.")
+    print(f"Generating embeddings for {source_name}...")
     for page in pages[1:]:
         parts = page.split(" =====", 1)
         if len(parts) == 2:
@@ -35,7 +35,7 @@ def build_index():
             text = text.strip()
             if len(text) > 50:
                 chunks.append(text)
-                metadata.append({"page": page_num, "text": text})
+                metadata.append({"page": page_num, "text": text, "source": source_name})
     
     vectors = [get_embedding(chunk) for chunk in chunks if get_embedding(chunk) is not None]
     vector_array = np.array(vectors).astype("float32")
@@ -44,11 +44,13 @@ def build_index():
     index = faiss.IndexFlatL2(dimension)
     index.add(vector_array)
     
-    faiss.write_index(index, "data/faiss.index")
-    with open("data/meta.json", "w") as f:
+    faiss.write_index(index, index_file)
+    with open(meta_file, "w") as f:
         json.dump(metadata, f)
         
-    print(f"Success! Built database with {len(vectors)} chunks.")
+    print(f"Done. Built {len(vectors)} chunks for {source_name}.")
 
 if __name__ == "__main__":
-    build_index()
+    build_index("data/faculty_text.txt", "data/faculty.index", "data/faculty_meta.json", "GSU Faculty Handbook")
+    build_index("data/student_text.txt", "data/student.index", "data/student_meta.json", "GSU Student Code of Conduct")
+    print("All indexes built.")
