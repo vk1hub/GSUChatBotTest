@@ -1,15 +1,18 @@
 import pdfplumber
 import os
 
-pdf_path = "data/Faculty_Handbook.pdf"
-out_path = "data/handbook_text.txt"
+faculty_pdf = "data/Faculty_Handbook.pdf"
+faculty_out = "data/faculty_text.txt"
 
-def extract_text():
+student_pdf = "data/STUDENT_COC.pdf"
+student_out = "data/student_text.txt"
+
+def extract_text(pdf_path, out_path):
     if not os.path.exists(pdf_path):
-        print("ERROR: Please place Faculty_Handbook.pdf in the backend/data/ folder!")
+        print(f"ERROR: Could not find {pdf_path}")
         return
         
-    print("Extracting text...")
+    print(f"Extracting {pdf_path}...")
     with pdfplumber.open(pdf_path) as pdf, open(out_path, "w", encoding="utf-8") as f:
         for i, page in enumerate(pdf.pages):
             text = page.extract_text()
@@ -18,4 +21,5 @@ def extract_text():
     print("Extraction complete. Saved to", out_path)
 
 if __name__ == "__main__":
-    extract_text()
+    extract_text(faculty_pdf, faculty_out)
+    extract_text(student_pdf, student_out)
