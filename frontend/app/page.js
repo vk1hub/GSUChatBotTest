@@ -9,12 +9,12 @@ import {
   updateProfile,
   signOut,
 } from "firebase/auth";
-import { collection, addDoc, getDocs, query, orderBy, getDoc, doc, updateDoc,} from "firebase/firestore";
+import { collection, addDoc, getDocs, query, orderBy, getDoc, doc, updateDoc, } from "firebase/firestore";
 
 export default function Home() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // loading state for chatbot response
+  const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
   const [user, setUser] = useState(null);
@@ -98,7 +98,7 @@ export default function Home() {
       });
       const data = await res.json();
       const aiMsg = { role: "ai", content: data.answer };
-      const finalMessages = [...updatedMessages, { role: "ai", content: data.answer }];
+      const finalMessages = [...updatedMessages, { role: "ai", content: data.answer, citations: data.citations || [] }];
       setMessages(finalMessages);
       // save the full conversation to firestore
       if (user && chatId) await saveMessages(chatId, finalMessages);
@@ -187,7 +187,20 @@ export default function Home() {
                 <div className="msg-wrap">
                   <div className="msg-label">{msg.role === "user" ? "YOU" : "AI"}</div>
                   <div className="msg-body">
-                    {msg.role === "ai" ? <ReactMarkdown>{msg.content}</ReactMarkdown> : <p>{msg.content}</p>}
+                    {msg.role === "ai" ? (
+                      <>
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        {msg.citations && msg.citations.length > 0 && (
+                          <p className="msg-citations">
+                            Sources: {msg.citations.map((c, i) => (
+                              <span key={i}>{c.source} p.{c.page}{i < msg.citations.length - 1 ? ", " : ""}</span>
+                            ))}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p>{msg.content}</p>
+                    )}
                   </div>
                 </div>
               </div>
