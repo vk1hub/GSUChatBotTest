@@ -17,9 +17,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-index = faiss.read_index("data/faiss.index")
-with open("data/meta.json", "r") as f:
-    metadata = json.load(f)
+faculty_index = faiss.read_index("data/faculty.index")
+student_index = faiss.read_index("data/student.index")
+with open("data/faculty_meta.json", "r") as f:
+    faculty_meta = json.load(f)
+with open("data/student_meta.json", "r") as f:
+    student_meta = json.load(f)
 
 class QueryRequest(BaseModel):
     question: str
@@ -31,30 +34,42 @@ def get_embedding(text):
 @app.post("/ask")
 def ask_question(request: QueryRequest):
     q_vec = np.array([get_embedding(request.question)]).astype("float32")
-    distances, indices = index.search(q_vec, k=5)
-    
+    _, fac_idx = faculty_index.search(q_vec, k=3)
+    _, stu_idx = student_index.search(q_vec, k=3)
+
     context = ""
-    citations_set = set() # Use a set to avoid duplicate page numbers
-    
-    for idx in indices[0]:
-        if idx < len(metadata): # Safety check
-            chunk = metadata[idx]
-            context += f"--- Page {chunk['page']} ---\n{chunk['text']}\n\n"
-            citations_set.add(chunk['page'])
-            
-    # Convert back to a sorted list for the frontend
-    citations = sorted(list(citations_set), key=lambda x: int(x) if str(x).isdigit() else x)
+    citations = []
+    seen = set()
+
+    for idx in fac_idx[0]:
+        if idx < len(faculty_meta):
+            chunk = faculty_meta[idx]
+            context += f"--- Faculty Handbook, Page {chunk['page']} ---\n{chunk['text']}\n\n"
+            key = ("Faculty Handbook", chunk['page'])
+            if key not in seen:
+                seen.add(key)
+                citations.append({"source": "GSU Faculty Handbook", "page": chunk['page']})
+
+    for idx in stu_idx[0]:
+        if idx < len(student_meta):
+            chunk = student_meta[idx]
+            context += f"--- Student Code of Conduct, Page {chunk['page']} ---\n{chunk['text']}\n\n"
+            key = ("Student Code of Conduct", chunk['page'])
+            if key not in seen:
+                seen.add(key)
+                citations.append({"source": "GSU Student Code of Conduct", "page": chunk['page']})
         
     prompt = f"""You are a professional, helpful administrative assistant for faculty at Georgia State University.
-    Your goal is to provide accurate, clear, and concise answers based strictly on the provided handbook excerpts.
+    Your goal is to provide accurate, clear, and concise answers based strictly on the provided handbook pages.
+    If the user asks who you are, what you do, or what you are trained on, tell them you are an AI assistant trained on the GSU Faculty Handbook and GSU Student Code of Conduct.
 
     CRITICAL RULES:
     1. Use ONLY the information contained in the Excerpts below.
-    2. If the answer is not explicitly in the excerpts, you must say: "I could not find this specific information in the handbook excerpts provided." Do NOT guess or use outside knowledge.
+    2. If the answer is not explicitly in the pages, you must say: "I could not find this specific information in the handbook pages provided." Do NOT guess or use outside knowledge.
     3. Format your answer to be highly readable. Use bullet points, bold text for key terms, and short paragraphs.
     4. Always mention the source page numbers in your response.
 
-    Excerpts:
+    Pages:
     {context}
 
     Question: {request.question}
