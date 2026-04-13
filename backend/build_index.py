@@ -23,21 +23,35 @@ def build_index(text_file, index_file, meta_file, source_name):
     with open(text_file, "r", encoding="utf-8") as f:
         content = f.read()
     
-    pages = content.split("===== PAGE ")
+    # if markers aren't there, treat the whole thing as one page
+    if "===== PAGE " in content:
+        pages = content.split("===== PAGE ")
+    else:
+        pages = ["0 =====" + content] # artificial marker for loop to work
+    
     chunks = []
     metadata = []
     
     print(f"Generating embeddings for {source_name}...")
-    for page in pages[1:]:
+    for page in pages[1:] if "===== PAGE " in content else pages:
         parts = page.split(" =====", 1)
         if len(parts) == 2:
             page_num, text = parts
+            
+            # strip out the ascii characters 
+            text = text.encode("ascii", "ignore").decode("ascii")
             text = text.strip()
+            
             if len(text) > 50:
                 chunks.append(text)
                 metadata.append({"page": page_num, "text": text, "source": source_name})
     
     vectors = [get_embedding(chunk) for chunk in chunks if get_embedding(chunk) is not None]
+    
+    if not vectors:
+        print(f"No embeddings generated for {source_name} - check that Ollama is running and the text file exists.")
+        return
+    
     vector_array = np.array(vectors).astype("float32")
     
     dimension = vector_array.shape[1]
@@ -53,4 +67,5 @@ def build_index(text_file, index_file, meta_file, source_name):
 if __name__ == "__main__":
     build_index("data/faculty_text.txt", "data/faculty.index", "data/faculty_meta.json", "GSU Faculty Handbook")
     build_index("data/student_text.txt", "data/student.index", "data/student_meta.json", "GSU Student Code of Conduct")
+    build_index("data/web_text.txt", "data/web.index", "data/web_meta.json", "GSU CS Website")
     print("All indexes built.")
