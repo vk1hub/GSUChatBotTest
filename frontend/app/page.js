@@ -192,16 +192,29 @@ export default function Home() {
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                         {msg.citations && msg.citations.length > 0 && (
                           <p className="msg-citations">
-                            Sources: {msg.citations.map((c, i) => (
+                            Sources:{" "}
+                            {Object.entries(
+                              msg.citations.reduce((grouped, c) => {
+                                const key = c.source;
+                                if (!grouped[key]) grouped[key] = [];
+                                grouped[key].push(c.page);
+                                return grouped;
+                              }, {})
+                            ).map(([source, pages], i, arr) => (
                               <span key={i}>
-                                {c.page && c.page.toString().startsWith("http") ? (
-                                  <a href={c.page} target="_blank" rel="noopener noreferrer" className="citation-link">
-                                    {c.source}
-                                  </a>
+                                {pages[0].toString().startsWith("http") ? (
+                                  pages.map((url, j) => (
+                                    <span key={j}>
+                                      <a href={url} target="_blank" rel="noopener noreferrer" className="citation-link">
+                                        {source} {j + 1}
+                                      </a>
+                                      {j < pages.length - 1 ? ", " : ""}
+                                    </span>
+                                  ))
                                 ) : (
-                                  `${c.source} p.${c.page}`
+                                  `${source} p.${pages.join(", ")}`
                                 )}
-                                {i < msg.citations.length - 1 ? ", " : ""}
+                                {i < arr.length - 1 ? " | " : ""}
                               </span>
                             ))}
                           </p>

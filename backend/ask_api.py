@@ -37,8 +37,8 @@ def get_embedding(text):
 @app.post("/ask")
 def ask_question(request: QueryRequest):
     q_vec = np.array([get_embedding(request.question)]).astype("float32")
-    _, fac_idx = faculty_index.search(q_vec, k=3)
-    _, stu_idx = student_index.search(q_vec, k=3)
+    _, fac_idx = faculty_index.search(q_vec, k=4)
+    _, stu_idx = student_index.search(q_vec, k=4)
     _, web_idx = web_index.search(q_vec, k=3)
 
     context = ""
