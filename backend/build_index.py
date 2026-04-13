@@ -23,20 +23,25 @@ def build_index(text_file, index_file, meta_file, source_name):
     with open(text_file, "r", encoding="utf-8") as f:
         content = f.read()
     
-    # if markers aren't there, treat the whole thing as one page
-    if "===== PAGE " in content:
+    # check for URL headers first, then fall back to PAGE markers
+    if "===== URL: " in content:
+        pages = content.split("===== URL: ")
+    elif "===== PAGE " in content:
         pages = content.split("===== PAGE ")
     else:
-        pages = ["0 =====" + content] # artificial marker for loop to work
+        pages = ["0 =====" + content]
     
     chunks = []
     metadata = []
     
     print(f"Generating embeddings for {source_name}...")
-    for page in pages[1:] if "===== PAGE " in content else pages:
+    # skip index 0 if splitting by markers
+    start_idx = 1 if ("===== URL: " in content or "===== PAGE " in content) else 0
+    
+    for page in pages[start_idx:]:
         parts = page.split(" =====", 1)
         if len(parts) == 2:
-            page_num, text = parts
+            page_info, text = parts
             
             # strip out the ascii characters 
             text = text.encode("ascii", "ignore").decode("ascii")
@@ -44,7 +49,7 @@ def build_index(text_file, index_file, meta_file, source_name):
             
             if len(text) > 50:
                 chunks.append(text)
-                metadata.append({"page": page_num, "text": text, "source": source_name})
+                metadata.append({"page": page_info.strip(), "text": text, "source": source_name})
     
     vectors = [get_embedding(chunk) for chunk in chunks if get_embedding(chunk) is not None]
     

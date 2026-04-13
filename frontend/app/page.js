@@ -193,7 +193,16 @@ export default function Home() {
                         {msg.citations && msg.citations.length > 0 && (
                           <p className="msg-citations">
                             Sources: {msg.citations.map((c, i) => (
-                              <span key={i}>{c.source} p.{c.page}{i < msg.citations.length - 1 ? ", " : ""}</span>
+                              <span key={i}>
+                                {c.page && c.page.toString().startsWith("http") ? (
+                                  <a href={c.page} target="_blank" rel="noopener noreferrer" className="citation-link">
+                                    {c.source}
+                                  </a>
+                                ) : (
+                                  `${c.source} p.${c.page}`
+                                )}
+                                {i < msg.citations.length - 1 ? ", " : ""}
+                              </span>
                             ))}
                           </p>
                         )}
