@@ -19,10 +19,13 @@ app.add_middleware(
 
 faculty_index = faiss.read_index("data/faculty.index")
 student_index = faiss.read_index("data/student.index")
+web_index = faiss.read_index("data/web.index")
 with open("data/faculty_meta.json", "r") as f:
     faculty_meta = json.load(f)
 with open("data/student_meta.json", "r") as f:
     student_meta = json.load(f)
+with open("data/web_meta.json", "r") as f:
+    web_meta = json.load(f)
 
 class QueryRequest(BaseModel):
     question: str
@@ -36,6 +39,7 @@ def ask_question(request: QueryRequest):
     q_vec = np.array([get_embedding(request.question)]).astype("float32")
     _, fac_idx = faculty_index.search(q_vec, k=3)
     _, stu_idx = student_index.search(q_vec, k=3)
+    _, web_idx = web_index.search(q_vec, k=3)
 
     context = ""
     citations = []
@@ -58,10 +62,19 @@ def ask_question(request: QueryRequest):
             if key not in seen:
                 seen.add(key)
                 citations.append({"source": "GSU Student Code of Conduct", "page": chunk['page']})
+    
+    for idx in web_idx[0]:
+        if idx < len(web_meta):
+            chunk = web_meta[idx]
+            context += f"--- GSU CS Website, Page {chunk['page']} ---\n{chunk['text']}\n\n"
+            key = ("GSU CS Website", chunk['page'])
+            if key not in seen:
+                seen.add(key)
+                citations.append({"source": "GSU CS Website", "page": chunk['page']})
         
     prompt = f"""You are a professional, helpful administrative assistant for faculty at Georgia State University.
     Your goal is to provide accurate, clear, and concise answers based strictly on the provided handbook pages.
-    If the user asks who you are, what you do, or what you are trained on, tell them you are an AI assistant trained on the GSU Faculty Handbook and GSU Student Code of Conduct.
+    If the user asks who you are, what you do, or what you are trained on, tell them you are an AI assistant trained on the GSU Faculty Handbook, GSU Student Code of Conduct, and GSU CS Department website.
 
     CRITICAL RULES:
     1. Use ONLY the information contained in the Excerpts below.
