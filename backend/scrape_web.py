@@ -10,38 +10,59 @@ SITEMAPS = [
     {
         "url": "https://csds.gsu.edu/page-sitemap.xml",
         "label": "GSU CS Department",
-        "filter_keyword": None  # no filtering, grab all pages
+        "filter_keyword": None
+    },
+    {
+        "url": "https://csds.gsu.edu/profile-sitemap.xml",
+        "label": "GSU CS Profiles",
+        "filter_keyword": None
     },
     {
         "url": "https://cas.gsu.edu/bwl_advanced_faq-sitemap.xml",
         "label": "CAS FAQs",
-        "filter_keyword": None  # no filtering, all faqs are useful
+        "filter_keyword": None
     },
     {
-        "url": "https://cas.gsu.edu/page-sitemap.xml",
-        "label": "CAS Computer Science Pages",
-        "filter_keyword": "computer-science"  # only grab cs-related pages
+        "url": "https://cas.gsu.edu/product-sitemap.xml",
+        "label": "CAS Computer Science Programs",
+        "filter_keyword": "computer-science"
+    },
+    {
+        "url": "https://cas.gsu.edu/profile-sitemap1.xml",
+        "label": "CAS Profiles 1",
+        "filter_keyword": None
+    },
+    {
+        "url": "https://cas.gsu.edu/profile-sitemap2.xml",
+        "label": "CAS Profiles 2",
+        "filter_keyword": None
     },
 ]
 
 def get_urls_from_sitemap(sitemap_url, filter_keyword=None):
     # fetch and parse the sitemap xml to extract page urls
     print(f"  Reading sitemap: {sitemap_url}")
-    res = requests.get(sitemap_url, timeout=10)
-    soup = BeautifulSoup(res.content, "xml")
-    urls = [loc.text.strip() for loc in soup.find_all("loc")]
 
-    # skip non-html file urls
-    bad_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".pdf", ".ico")
-    urls = [u for u in urls if not u.lower().endswith(bad_exts)]
+    try:
+        res = requests.get(sitemap_url, timeout=20)
+        soup = BeautifulSoup(res.content, "xml")
+        urls = [loc.text.strip() for loc in soup.find_all("loc")]
 
-    if filter_keyword:
-        urls = [u for u in urls if filter_keyword in u]
-        print(f"  Filtered to {len(urls)} urls containing '{filter_keyword}'")
-    else:
-        print(f"  Found {len(urls)} urls")
+        # skip non-html file urls
+        bad_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".pdf", ".ico")
+        urls = [u for u in urls if not u.lower().endswith(bad_exts)]
 
-    return urls
+        if filter_keyword:
+            urls = [u for u in urls if filter_keyword in u]
+            print(f"  Filtered to {len(urls)} urls containing '{filter_keyword}'")
+        else:
+            print(f"  Found {len(urls)} urls")
+
+        return urls
+
+    except Exception as e:
+        print(f"  Failed to read sitemap {sitemap_url}: {e}")
+        return []
 
 def scrape_page(url):
     # grab the main text content from a page, strip nav/footer/scripts

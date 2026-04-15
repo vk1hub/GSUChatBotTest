@@ -61,11 +61,14 @@ export default function Home() {
   // create a new chat doc in firestore using the first question as the title
   const createChat = async (firstQuestion) => {
     const title = firstQuestion.length > 40 ? firstQuestion.slice(0, 40) + "..." : firstQuestion;
+    const firstMessages = [{ role: "user", content: firstQuestion }];
+
     const ref = await addDoc(collection(db, "users", user.uid, "chats"), {
       title,
-      messages: [],
+      messages: firstMessages,
       createdAt: Date.now(),
     });
+
     setChatHistory((prev) => [{ id: ref.id, title }, ...prev]);
     setActiveChatId(ref.id);
     return ref.id;
