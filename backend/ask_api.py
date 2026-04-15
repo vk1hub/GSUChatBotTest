@@ -37,9 +37,20 @@ def get_embedding(text):
 @app.post("/ask")
 def ask_question(request: QueryRequest):
     q_vec = np.array([get_embedding(request.question)]).astype("float32")
-    _, fac_idx = faculty_index.search(q_vec, k=4)
-    _, stu_idx = student_index.search(q_vec, k=4)
-    _, web_idx = web_index.search(q_vec, k=3)
+    q = request.question.lower()
+
+    if "office" in q or "hours" in q or "location" in q or "address" in q or "contact" in q:
+        fac_k = 1
+        stu_k = 1
+        web_k = 8
+    else:
+        fac_k = 4
+        stu_k = 4
+        web_k = 5
+
+    _, fac_idx = faculty_index.search(q_vec, k=fac_k)
+    _, stu_idx = student_index.search(q_vec, k=stu_k)
+    _, web_idx = web_index.search(q_vec, k=web_k)
 
     context = ""
     citations = []
@@ -72,7 +83,7 @@ def ask_question(request: QueryRequest):
                 seen.add(key)
                 citations.append({"source": "GSU CS Website", "page": chunk['page']})
         
-    prompt = f"""You are a professional, helpful administrative assistant for faculty at Georgia State University.
+    prompt = f"""You are a professional, helpful administrative assistant for Computer Science students and faculty at Georgia State University.
     Your goal is to provide accurate, clear, and concise answers based strictly on the provided handbook pages.
     If the user asks who you are, what you do, or what you are trained on, tell them you are an AI assistant trained on the GSU Faculty Handbook, GSU Student Code of Conduct, and GSU CS Department website.
 

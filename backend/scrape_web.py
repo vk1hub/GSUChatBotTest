@@ -31,6 +31,10 @@ def get_urls_from_sitemap(sitemap_url, filter_keyword=None):
     soup = BeautifulSoup(res.content, "xml")
     urls = [loc.text.strip() for loc in soup.find_all("loc")]
 
+    # skip non-html file urls
+    bad_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".pdf", ".ico")
+    urls = [u for u in urls if not u.lower().endswith(bad_exts)]
+
     if filter_keyword:
         urls = [u for u in urls if filter_keyword in u]
         print(f"  Filtered to {len(urls)} urls containing '{filter_keyword}'")
@@ -49,10 +53,28 @@ def scrape_page(url):
         for tag in soup(["script", "style", "nav", "footer", "header"]):
             tag.decompose()
 
-        text = soup.get_text(separator="\n", strip=True)
+        # try to use the main content area first
+        content = soup.find("main")
+        if content is None:
+            content = soup.find("article")
+        if content is None:
+            content = soup
+
+        text = content.get_text(separator="\n", strip=True)
+
         # collapse excessive blank lines
         lines = [line for line in text.splitlines() if line.strip()]
-        return "\n".join(lines)
+        text = "\n".join(lines)
+
+        # skip pages that are too short
+        if len(text) < 200:
+            return None
+        if "JFIF" in text or "Exif" in text:
+            return None
+        if "{font-size:" in text or "/*" in text:
+            return None
+
+        return text
     except Exception as e:
         print(f"  Failed to scrape {url}: {e}")
         return None
