@@ -89,9 +89,11 @@ def ask_question(request: QueryRequest):
 
     CRITICAL RULES:
     1. Use ONLY the information contained in the Excerpts below.
-    2. If the answer is not explicitly in the pages, you must say: "I could not find this specific information in the handbook pages provided." Do NOT guess or use outside knowledge.
-    3. Format your answer to be highly readable. Use bullet points, bold text for key terms, and short paragraphs.
-    4. Always mention the source page numbers in your response.
+    2. If the answer is not explicitly in the sources, say: "I could not find this specific information in the provided sources."
+    3. Do NOT guess, infer specific course numbers, create sample schedules, or invent examples.
+    4. Do NOT provide hypothetical examples unless the sources explicitly include them.
+    5. If the sources give only general advice, answer only with that general advice.
+    6. Never mention courses, people, dates, requirements, or policies that are not explicitly shown in the excerpts.
 
     Pages:
     {context}
